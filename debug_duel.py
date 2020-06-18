@@ -1,3 +1,5 @@
+import re
+#re._pattern_type = re.Pattern
 import sys
 import json
 import sqlite3
@@ -5,6 +7,10 @@ from ygo import duel as dm
 from ygo import globals as glb
 from ygo import server
 from ygo.language_handler import LanguageHandler
+
+class FakeConnection:
+	def __init__(self):
+		self.parser = None
 
 class FakePlayer:
 	def __init__(self, i, deck):
@@ -15,7 +21,7 @@ class FakePlayer:
 		self.watching = False
 		self.seen_waiting = False
 		self.soundpack = False
-		
+		self.connection = FakeConnection()
 
 	def notify(self, text, *args, **kwargs):
 		print(self.duel_player, text)
@@ -38,20 +44,19 @@ def main():
 	glb.server.db.row_factory = sqlite3.Row
 	for i, line in enumerate(fp):
 		print("line %d" % (i+1))
-		if i + 1 == 227:
-			import code;code.interact(local=dict(globals(), **locals()))
 		j = json.loads(line)
 		if 'data' in j:
 			j['data'] = j['data'].encode('latin1')
+			print(repr(j['data']))
 		if j['event_type'] == 'start':
 			duel = dm.Duel(j.get('seed', 0))
-			players = [FakePlayer(i, deck) for i, deck in enumerate(j['decks'])]
+			players = [FakePlayer(i, deck[::-1]) for i, deck in enumerate(j['decks'])]
 			for i, name in enumerate(j['players']):
 				players[i].nickname = name
 				duel.load_deck(players[i], shuffle=False)
 			duel.players = players
 			duel.cm.register_callback('*', debug)
-			duel.start(0x40000)
+			duel.start(j['options'])
 		elif j['event_type'] == 'set_responsei':
 			duel.set_responsei(j['response'])
 			print("Responded %d" % j['response'])

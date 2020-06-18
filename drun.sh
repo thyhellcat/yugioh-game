@@ -1,0 +1,1 @@
+DEBUG=1 python3 ygo.py -p 4000
